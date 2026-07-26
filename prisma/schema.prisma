@@ -11,3 +11,73 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id         Int         @id @default(autoincrement())
+  name       String
+  email      String      @unique
+  password   String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  workspaces Workspace[]
+}
+
+model Workspace {
+  id          Int          @id @default(autoincrement())
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id])
+  collections Collection[]
+}
+
+model Collection {
+  id          Int       @id @default(autoincrement())
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspaceId Int
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  requests    Request[]
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+  OPTIONS
+  HEAD
+}
+
+model Request {
+  id      Int        @id @default(autoincrement())
+  name    String
+  method  HttpMethod
+  url     String
+  headers Json?
+  body    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  collectionId Int
+  collection   Collection @relation(fields: [collectionId], references: [id])
+
+  histories History[]
+}
+
+model History {
+  id Int @id @default(autoincrement())
+
+  statusCode Int
+  response   Json?
+  duration   Int
+
+  createdAt DateTime @default(now())
+
+  requestId Int
+  request   Request @relation(fields: [requestId], references: [id])
+}
