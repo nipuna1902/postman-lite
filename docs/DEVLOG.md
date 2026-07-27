@@ -17,3 +17,9 @@
 - made route.ts for workspaces, created the workspace api
 - Created first workspace
 - Added zod for workspace(route.ts)
+
+# Day 3
+
+- Wrote zod for collection in collection.ts
+- Created route.ts for collections
+- Wrote zod for request.ts
