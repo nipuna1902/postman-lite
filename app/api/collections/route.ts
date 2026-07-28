@@ -94,3 +94,60 @@ if (!workspace) {
     );
   }
 }
+
+// Get all collections for the logged-in user.
+
+export async function GET(request: Request) {
+  try {
+    const authHeader = request.headers.get("Authorization");
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return NextResponse.json(
+        { message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const { userId } = payload as { userId: number };
+
+    const collections = await prisma.collection.findMany({
+      where: {
+        workspace: {
+          userId,
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return NextResponse.json(
+      {
+        collections,
+      },
+      {
+        status: 200,
+      }
+    );
+  } catch {
+    return NextResponse.json(
+      {
+        message: "Something went wrong",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

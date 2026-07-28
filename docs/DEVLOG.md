@@ -31,3 +31,4 @@
 
 - Starting frontend
 - Components(reusable UI pieces)
+- Created collection
