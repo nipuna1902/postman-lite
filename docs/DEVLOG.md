@@ -23,3 +23,6 @@
 - Wrote zod for collection in collection.ts
 - Created route.ts for collections
 - Wrote zod for request.ts
+- Created route.ts for request.ts
+- Wrote dynamic url route.ts
+- Connected backend, implemented saving history
