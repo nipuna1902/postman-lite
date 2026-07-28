@@ -26,3 +26,8 @@
 - Created route.ts for request.ts
 - Wrote dynamic url route.ts
 - Connected backend, implemented saving history
+
+# Day 4
+
+- Starting frontend
+- Components(reusable UI pieces)
