@@ -76,3 +76,56 @@ const { name } = result.data;
     );
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const authHeader = request.headers.get("Authorization");
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return NextResponse.json(
+        { message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const { userId } = payload as { userId: number };
+
+    const workspaces = await prisma.workspace.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return NextResponse.json(
+      {
+        workspaces,
+      },
+      {
+        status: 200,
+      }
+    );
+  } catch {
+    return NextResponse.json(
+      {
+        message: "Something went wrong",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

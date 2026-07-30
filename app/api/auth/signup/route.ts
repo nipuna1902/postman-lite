@@ -36,13 +36,16 @@ export async function POST(request: Request) {
       );
     }
       const hashedPassword = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-    },
-  });
+      await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          workspaces: {
+          create: { name: "My Workspace" },
+          },
+        },
+      });
 
     console.log(name, email, password);
     return NextResponse.json({

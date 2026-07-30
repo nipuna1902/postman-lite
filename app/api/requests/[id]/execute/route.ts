@@ -92,7 +92,7 @@ if (!savedRequest) {
     return NextResponse.json(
       {
         status: response.status,
-        success: response.ok,
+        success: response.ok,duration,
         data: responseData,
       },
       {

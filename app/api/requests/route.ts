@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     // ==========================
     // 9. Save Request
     // ==========================
-    await prisma.request.create({
+    const created = await prisma.request.create({
       data: {
         name,
         method,
@@ -116,6 +116,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Request created successfully",
+        id: created.id,
       },
       {
         status: 201,
@@ -124,12 +125,67 @@ export async function POST(request: Request) {
 
   } catch (error) {
     return NextResponse.json(
-      {
-        message: "Something went wrong",
+      { message: "Something went wrong" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const authHeader = request.headers.get("Authorization");
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyToken(token);
+
+    if (!payload) {
+      return NextResponse.json(
+        { message: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const { userId } = payload as { userId: number };
+
+    const { searchParams } = new URL(request.url);
+    const collectionId = Number(searchParams.get("collectionId"));
+
+    if (!collectionId) {
+      return NextResponse.json(
+        { message: "collectionId query param is required" },
+        { status: 400 }
+      );
+    }
+
+    const requests = await prisma.request.findMany({
+      where: {
+        collectionId,
+        collection: {
+          workspace: {
+            userId,
+          },
+        },
       },
-      {
-        status: 500,
-      }
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return NextResponse.json(
+      { requests },
+      { status: 200 }
+    );
+  } catch {
+    return NextResponse.json(
+      { message: "Something went wrong" },
+      { status: 500 }
     );
   }
 }

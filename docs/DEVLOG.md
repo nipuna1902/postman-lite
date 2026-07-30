@@ -32,3 +32,8 @@
 - Starting frontend
 - Components(reusable UI pieces)
 - Created collection
+
+# Day 5
+
+- User gets entered to a workspace defaultly
+- Making the request, collection functional
