@@ -9,7 +9,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -79,5 +78,5 @@ model History {
   createdAt DateTime @default(now())
 
   requestId Int
-  request   Request @relation(fields: [requestId], references: [id])
+  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }

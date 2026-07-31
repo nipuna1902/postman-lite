@@ -37,3 +37,10 @@
 
 - User gets entered to a workspace defaultly
 - Making the request, collection functional
+- User should be able to edit
+
+# Day 6
+
+- Built the history part
+- Created history route.ts
+- Delete, put route

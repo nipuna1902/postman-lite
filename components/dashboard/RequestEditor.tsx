@@ -6,6 +6,14 @@ import UrlInput from "./UrlInput";
 import SendButton from "./SendButton";
 import { useDashboard } from "./DashboardContext";
 
+type HistoryEntry = {
+  id: number;
+  statusCode: number;
+  duration: number;
+  createdAt: string;
+  response: unknown;
+};
+
 export default function RequestEditor() {
   const {
     selectedCollectionId,
@@ -20,11 +28,10 @@ export default function RequestEditor() {
   const [url, setUrl] = useState("");
   const [headersText, setHeadersText] = useState("");
   const [bodyText, setBodyText] = useState("");
-  const [activeTab, setActiveTab] = useState<"headers" | "body">("headers");
+  const [activeTab, setActiveTab] = useState<"headers" | "body" | "history">("headers");
   const [sending, setSending] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  // Whenever a different saved request is selected in the sidebar, load its
-  // saved values into the editor. Selecting "null" (New request) resets it.
   useEffect(() => {
     if (selectedRequestId == null) {
       setMethod("GET");
@@ -40,6 +47,22 @@ export default function RequestEditor() {
     setHeadersText(req.headers ? JSON.stringify(req.headers, null, 2) : "");
     setBodyText(req.body ? JSON.stringify(req.body, null, 2) : "");
   }, [selectedRequestId, requests]);
+
+  useEffect(() => {
+    if (activeTab !== "history" || selectedRequestId == null) return;
+
+    const fetchHistory = async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/requests/${selectedRequestId}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setHistory(data.history);
+    };
+
+    fetchHistory();
+  }, [activeTab, selectedRequestId]);
 
   const handleSend = async () => {
     if (!selectedCollectionId) {
@@ -71,23 +94,23 @@ export default function RequestEditor() {
     setSending(true);
     const token = localStorage.getItem("token");
 
+    const payload = {
+      name: url.slice(0, 50),
+      method,
+      url,
+      headers: parsedHeaders,
+      body: parsedBody,
+      collectionId: selectedCollectionId,
+    };
+
     try {
       let requestId = selectedRequestId;
 
-      // Only save a brand-new row if this is a fresh, unsaved draft.
-      // Re-sending an already-selected request just re-executes it.
       if (requestId == null) {
         const saveRes = await fetch("/api/requests", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            name: `${method} ${url}`.slice(0, 50),
-            method,
-            url,
-            headers: parsedHeaders,
-            body: parsedBody,
-            collectionId: selectedCollectionId,
-          }),
+          body: JSON.stringify(payload),
         });
 
         const saveData = await saveRes.json();
@@ -97,6 +120,19 @@ export default function RequestEditor() {
           return;
         }
         requestId = saveData.id;
+      } else {
+        const updateRes = await fetch(`/api/requests/${requestId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        });
+
+        const updateData = await updateRes.json();
+
+        if (!updateRes.ok) {
+          alert(updateData.message || "Failed to update request");
+          return;
+        }
       }
 
       const execRes = await fetch(`/api/requests/${requestId}/execute`, {
@@ -141,9 +177,12 @@ export default function RequestEditor() {
         <button onClick={() => setActiveTab("body")} className={activeTab === "body" ? "text-foreground" : ""}>
           Body
         </button>
+        <button onClick={() => setActiveTab("history")} className={activeTab === "history" ? "text-foreground" : ""}>
+          History
+        </button>
       </div>
 
-      <div className="mt-4 h-56 rounded-xl bg-surface p-4">
+      <div className="mt-4 h-56 overflow-y-auto rounded-xl bg-surface p-4">
         {activeTab === "headers" ? (
           <textarea
             value={headersText}
@@ -151,13 +190,39 @@ export default function RequestEditor() {
             placeholder='{ "Content-Type": "application/json" }'
             className="h-full w-full resize-none bg-transparent font-mono text-sm outline-none placeholder:text-muted"
           />
-        ) : (
+        ) : activeTab === "body" ? (
           <textarea
             value={bodyText}
             onChange={(e) => setBodyText(e.target.value)}
             placeholder='{ "key": "value" }'
             className="h-full w-full resize-none bg-transparent font-mono text-sm outline-none placeholder:text-muted"
           />
+        ) : selectedRequestId == null ? (
+          <p className="text-sm text-muted">Save this request to see its run history.</p>
+        ) : history.length === 0 ? (
+          <p className="text-sm text-muted">No runs yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {history.map((h) => (
+              <button
+                key={h.id}
+                onClick={() =>
+                  setResponse({
+                    status: h.statusCode,
+                    duration: h.duration,
+                    data: h.response,
+                  })
+                }
+                className="flex w-full justify-between rounded-md bg-background px-3 py-2 text-left text-xs transition hover:bg-surface"
+              >
+                <span className={h.statusCode >= 400 ? "text-red-400" : "text-green-400"}>
+                  {h.statusCode}
+                </span>
+                <span className="text-muted">{h.duration} ms</span>
+                <span className="text-muted">{new Date(h.createdAt).toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </section>
