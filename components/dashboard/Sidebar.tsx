@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import CreateCollectionModal from "./CreateCollectionModal";
 import { useDashboard } from "./DashboardContext";
 
@@ -13,8 +13,36 @@ export default function Sidebar() {
     requests,
     selectedRequestId,
     setSelectedRequestId,
+    refetchRequests,
+    setResponse,
   } = useDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleDeleteRequest = async (e: React.MouseEvent, requestId: number) => {
+    e.stopPropagation(); // don't also trigger the parent button's onClick (selecting it)
+
+    const confirmed = window.confirm("Delete this request? This can't be undone.");
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/requests/${requestId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      alert("Failed to delete request");
+      return;
+    }
+
+    // If the deleted request was open in the editor, clear the editor too.
+    if (selectedRequestId === requestId) {
+      setSelectedRequestId(null);
+      setResponse(null);
+    }
+
+    await refetchRequests();
+  };
 
   return (
     <>
@@ -54,16 +82,26 @@ export default function Sidebar() {
                       <p className="px-2 py-1 text-xs text-muted">No requests yet</p>
                     ) : (
                       requests.map((req) => (
-                        <button
+                        <div
                           key={req.id}
-                          onClick={() => setSelectedRequestId(req.id)}
-                          className={`block w-full truncate rounded-md px-2 py-1 text-left text-xs transition hover:bg-surface ${
+                          className={`group flex items-center justify-between rounded-md px-2 py-1 text-xs transition hover:bg-surface ${
                             selectedRequestId === req.id ? "text-accent" : "text-muted"
                           }`}
                         >
-                          <span className="mr-1 font-mono">{req.method}</span>
-                          {req.name}
-                        </button>
+                          <button
+                            onClick={() => setSelectedRequestId(req.id)}
+                            className="flex-1 truncate text-left"
+                          >
+                            <span className="mr-1 font-mono">{req.method}</span>
+                            {req.name}
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteRequest(e, req.id)}
+                            className="ml-2 opacity-0 transition group-hover:opacity-100 hover:text-red-400"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       ))
                     )}
 

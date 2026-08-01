@@ -63,7 +63,7 @@ model Request {
   updatedAt DateTime @updatedAt
 
   collectionId Int
-  collection   Collection @relation(fields: [collectionId], references: [id])
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   histories History[]
 }

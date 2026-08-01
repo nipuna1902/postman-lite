@@ -44,3 +44,8 @@
 - Built the history part
 - Created history route.ts
 - Delete, put route
+- UI for the deletion
+
+# Day 7
+
+- Deletion shoul be seen in the request row too

@@ -33,6 +33,7 @@ type DashboardContextType = {
 
   response: ApiResponse | null;
   setResponse: (r: ApiResponse | null) => void;
+  clearCollectionSelection: () => void;
 };
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -87,6 +88,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (selectedCollectionId) await fetchRequests(selectedCollectionId);
   };
 
+  // Used when the currently-selected collection itself gets deleted —
+  // wipes every piece of state that depended on it.
+  const clearCollectionSelection = () => {
+    setSelectedCollectionIdState(null);
+    setRequests([]);
+    setSelectedRequestId(null);
+    setResponse(null);
+  };
+
   useEffect(() => {
     fetchWorkspace();
     fetchCollections();
@@ -106,6 +116,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         refetchRequests,
         response,
         setResponse,
+        clearCollectionSelection,
       }}
     >
       {children}
