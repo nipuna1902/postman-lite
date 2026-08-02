@@ -29,6 +29,19 @@ model Workspace {
   userId      Int
   user        User         @relation(fields: [userId], references: [id])
   collections Collection[]
+  environments Environment[]
+}
+
+model Environment {
+  id Int @id @default(autoincrement())
+
+  name      String
+  variables Json?
+
+  createdAt DateTime @default(now())
+
+  workspaceId Int
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Collection {
