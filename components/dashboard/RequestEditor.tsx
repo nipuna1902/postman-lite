@@ -28,7 +28,9 @@ export default function RequestEditor() {
   const [url, setUrl] = useState("");
   const [headersText, setHeadersText] = useState("");
   const [bodyText, setBodyText] = useState("");
-  const [activeTab, setActiveTab] = useState<"headers" | "body" | "history">("headers");
+  const [authType, setAuthType] = useState<"none" | "bearer">("none");
+  const [authToken, setAuthToken] = useState("");
+  const [activeTab, setActiveTab] = useState<"auth" | "headers" | "body" | "history">("headers");
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -38,14 +40,32 @@ export default function RequestEditor() {
       setUrl("");
       setHeadersText("");
       setBodyText("");
+      setAuthType("none");
+      setAuthToken("");
       return;
     }
     const req = requests.find((r) => r.id === selectedRequestId);
     if (!req) return;
+
     setMethod(req.method);
     setUrl(req.url);
-    setHeadersText(req.headers ? JSON.stringify(req.headers, null, 2) : "");
     setBodyText(req.body ? JSON.stringify(req.body, null, 2) : "");
+
+    // Split a saved Authorization: Bearer <token> header back out into the
+    // Auth tab, so it doesn't just show up as raw JSON under Headers.
+    const savedHeaders = { ...(req.headers ?? {}) } as Record<string, string>;
+    const authHeader = savedHeaders["Authorization"];
+
+    if (authHeader?.startsWith("Bearer ")) {
+      setAuthType("bearer");
+      setAuthToken(authHeader.slice(7));
+      delete savedHeaders["Authorization"];
+    } else {
+      setAuthType("none");
+      setAuthToken("");
+    }
+
+    setHeadersText(Object.keys(savedHeaders).length ? JSON.stringify(savedHeaders, null, 2) : "");
   }, [selectedRequestId, requests]);
 
   useEffect(() => {
@@ -74,11 +94,11 @@ export default function RequestEditor() {
       return;
     }
 
-    let parsedHeaders: Record<string, string> | undefined;
+    let parsedHeaders: Record<string, string> = {};
     let parsedBody: unknown;
 
     try {
-      parsedHeaders = headersText.trim() ? JSON.parse(headersText) : undefined;
+      parsedHeaders = headersText.trim() ? JSON.parse(headersText) : {};
     } catch {
       alert('Headers must be valid JSON, e.g. { "Content-Type": "application/json" }');
       return;
@@ -91,6 +111,12 @@ export default function RequestEditor() {
       return;
     }
 
+    // Fold the Auth tab into the same headers object before saving/sending —
+    // execute doesn't need to know "auth" exists as its own concept.
+    if (authType === "bearer" && authToken.trim()) {
+      parsedHeaders["Authorization"] = `Bearer ${authToken.trim()}`;
+    }
+
     setSending(true);
     const token = localStorage.getItem("token");
 
@@ -98,7 +124,7 @@ export default function RequestEditor() {
       name: url.slice(0, 50),
       method,
       url,
-      headers: parsedHeaders,
+      headers: Object.keys(parsedHeaders).length ? parsedHeaders : undefined,
       body: parsedBody,
       collectionId: selectedCollectionId,
     };
@@ -171,6 +197,9 @@ export default function RequestEditor() {
       </div>
 
       <div className="mt-5 flex gap-6 text-sm text-muted">
+        <button onClick={() => setActiveTab("auth")} className={activeTab === "auth" ? "text-foreground" : ""}>
+          Auth
+        </button>
         <button onClick={() => setActiveTab("headers")} className={activeTab === "headers" ? "text-foreground" : ""}>
           Headers
         </button>
@@ -183,7 +212,28 @@ export default function RequestEditor() {
       </div>
 
       <div className="mt-4 h-56 overflow-y-auto rounded-xl bg-surface p-4">
-        {activeTab === "headers" ? (
+        {activeTab === "auth" ? (
+          <div className="space-y-3">
+            <select
+              value={authType}
+              onChange={(e) => setAuthType(e.target.value as "none" | "bearer")}
+              className="rounded-lg border border-[#2B2B31] bg-[#202024] px-3 py-2 text-sm outline-none"
+            >
+              <option value="none">No Auth</option>
+              <option value="bearer">Bearer Token</option>
+            </select>
+
+            {authType === "bearer" && (
+              <input
+                type="text"
+                value={authToken}
+                onChange={(e) => setAuthToken(e.target.value)}
+                placeholder="Paste your token here"
+                className="w-full rounded-lg border border-[#2B2B31] bg-[#202024] px-4 py-2 text-sm font-mono outline-none"
+              />
+            )}
+          </div>
+        ) : activeTab === "headers" ? (
           <textarea
             value={headersText}
             onChange={(e) => setHeadersText(e.target.value)}

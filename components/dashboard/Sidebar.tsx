@@ -14,12 +14,14 @@ export default function Sidebar() {
     selectedRequestId,
     setSelectedRequestId,
     refetchRequests,
+    refetchCollections,
+    clearCollectionSelection,
     setResponse,
   } = useDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleDeleteRequest = async (e: React.MouseEvent, requestId: number) => {
-    e.stopPropagation(); // don't also trigger the parent button's onClick (selecting it)
+    e.stopPropagation();
 
     const confirmed = window.confirm("Delete this request? This can't be undone.");
     if (!confirmed) return;
@@ -35,7 +37,6 @@ export default function Sidebar() {
       return;
     }
 
-    // If the deleted request was open in the editor, clear the editor too.
     if (selectedRequestId === requestId) {
       setSelectedRequestId(null);
       setResponse(null);
@@ -44,9 +45,35 @@ export default function Sidebar() {
     await refetchRequests();
   };
 
+  const handleDeleteCollection = async (e: React.MouseEvent, collectionId: number) => {
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      "Delete this collection? All requests inside it will be deleted too. This can't be undone."
+    );
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/collections/${collectionId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      alert("Failed to delete collection");
+      return;
+    }
+
+    if (selectedCollectionId === collectionId) {
+      clearCollectionSelection();
+    }
+
+    await refetchCollections();
+  };
+
   return (
     <>
-      <aside className="flex w-72 flex-col overflow-y-auto border-r border-border bg-sidebar">
+      <aside className="flex w-72 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
         <div className="border-b border-border p-6">
           <h1 className="text-2xl font-semibold tracking-[-0.03em]">
             <span>postman-</span>
@@ -67,14 +94,24 @@ export default function Sidebar() {
           ) : (
             collections.map((collection) => (
               <div key={collection.id}>
-                <button
-                  onClick={() => setSelectedCollectionId(collection.id)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-surface ${
+                <div
+                  className={`group flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-surface ${
                     selectedCollectionId === collection.id ? "bg-surface text-accent" : ""
                   }`}
                 >
-                  {collection.name}
-                </button>
+                  <button
+                    onClick={() => setSelectedCollectionId(collection.id)}
+                    className="flex-1 truncate text-left"
+                  >
+                    {collection.name}
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteCollection(e, collection.id)}
+                    className="ml-2 opacity-0 transition group-hover:opacity-100 hover:text-red-400"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
 
                 {selectedCollectionId === collection.id && (
                   <div className="ml-3 mt-1 space-y-1 border-l border-border pl-3">

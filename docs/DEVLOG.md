@@ -49,3 +49,8 @@
 # Day 7
 
 - Deletion shoul be seen in the request row too
+
+# Day 8
+
+- Deleting a collection built
+- Few UI changes
