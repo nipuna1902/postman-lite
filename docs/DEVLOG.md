@@ -56,3 +56,5 @@
 - Few UI changes
 - Making workspace switchable
 - Adding params
+- Building feature to add environment variables
+- UI for env variable setup

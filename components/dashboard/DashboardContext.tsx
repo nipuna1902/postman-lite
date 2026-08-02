@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 
 type Workspace = { id: number; name: string };
 type Collection = { id: number; name: string };
+type Environment = { id: number; name: string; variables: Record<string, string> | null };
 
 export type SavedRequest = {
   id: number;
@@ -26,6 +27,11 @@ type DashboardContextType = {
   setWorkspaceId: (id: number) => void;
   refetchWorkspaces: () => Promise<void>;
 
+  environments: Environment[];
+  selectedEnvironmentId: number | null;
+  setSelectedEnvironmentId: (id: number | null) => void;
+  refetchEnvironments: () => Promise<void>;
+
   collections: Collection[];
   selectedCollectionId: number | null;
   setSelectedCollectionId: (id: number) => void;
@@ -46,6 +52,8 @@ const DashboardContext = createContext<DashboardContextType | null>(null);
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceIdState] = useState<number | null>(null);
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<number | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollectionId, setSelectedCollectionIdState] = useState<number | null>(null);
   const [requests, setRequests] = useState<SavedRequest[]>([]);
@@ -60,10 +68,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (!res.ok) return;
     const data = await res.json();
     setWorkspaces(data.workspaces);
-    // Default to the first workspace only if nothing is selected yet.
     if (data.workspaces?.length && workspaceId == null) {
       setWorkspaceIdState(data.workspaces[0].id);
     }
+  };
+
+  const fetchEnvironments = async (wsId: number) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/environments?workspaceId=${wsId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setEnvironments(data.environments);
   };
 
   const fetchCollections = async (wsId: number) => {
@@ -86,15 +103,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setRequests(data.requests);
   };
 
-  // Switching workspaces resets everything downstream of it —
-  // its collections, whatever collection/request was selected, and any response on screen.
+  // Switching workspaces resets everything scoped to the old one —
+  // its collections, environment selection, and whatever was open.
   const setWorkspaceId = (id: number) => {
     setWorkspaceIdState(id);
+    setSelectedEnvironmentId(null);
     setSelectedCollectionIdState(null);
     setRequests([]);
     setSelectedRequestId(null);
     setResponse(null);
-    fetchCollections(id);
   };
 
   const setSelectedCollectionId = (id: number) => {
@@ -106,6 +123,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const refetchCollections = async () => {
     if (workspaceId) await fetchCollections(workspaceId);
+  };
+
+  const refetchEnvironments = async () => {
+    if (workspaceId) await fetchEnvironments(workspaceId);
   };
 
   const refetchRequests = async () => {
@@ -123,9 +144,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     fetchWorkspaces();
   }, []);
 
-  // Once a workspace becomes selected, load its collections.
+  // Once a workspace is selected (initially, or by switching), load its
+  // collections and environments together.
   useEffect(() => {
-    if (workspaceId != null) fetchCollections(workspaceId);
+    if (workspaceId != null) {
+      fetchCollections(workspaceId);
+      fetchEnvironments(workspaceId);
+    }
   }, [workspaceId]);
 
   return (
@@ -135,6 +160,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         workspaceId,
         setWorkspaceId,
         refetchWorkspaces: fetchWorkspaces,
+        environments,
+        selectedEnvironmentId,
+        setSelectedEnvironmentId,
+        refetchEnvironments,
         collections,
         selectedCollectionId,
         setSelectedCollectionId,

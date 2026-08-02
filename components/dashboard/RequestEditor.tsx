@@ -17,7 +17,6 @@ type HistoryEntry = {
 
 type ParamRow = { key: string; value: string };
 
-// Pure helpers: no state, just string-in/string-out. Reused by both directions of sync.
 function parseParamsFromUrl(url: string): ParamRow[] {
   const [, query] = url.split("?");
   if (!query) return [];
@@ -43,6 +42,9 @@ export default function RequestEditor() {
     refetchRequests,
     setSelectedRequestId,
     setResponse,
+    environments,
+    selectedEnvironmentId,
+    setSelectedEnvironmentId,
   } = useDashboard();
 
   const [method, setMethod] = useState("GET");
@@ -88,8 +90,6 @@ export default function RequestEditor() {
     setHeadersText(Object.keys(savedHeaders).length ? JSON.stringify(savedHeaders, null, 2) : "");
   }, [selectedRequestId, requests]);
 
-  // Whenever the URL changes — typed directly, loaded from a saved request,
-  // or rebuilt after editing a param row — keep the Params table in sync with it.
   useEffect(() => {
     setParamRows(parseParamsFromUrl(url));
   }, [url]);
@@ -203,7 +203,8 @@ export default function RequestEditor() {
 
       const execRes = await fetch(`/api/requests/${requestId}/execute`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ environmentId: selectedEnvironmentId ?? undefined }),
       });
 
       const execData = await execRes.json();
@@ -233,6 +234,20 @@ export default function RequestEditor() {
       <div className="flex gap-3">
         <MethodSelect value={method} onChange={setMethod} />
         <UrlInput value={url} onChange={setUrl} />
+
+        <select
+          value={selectedEnvironmentId ?? ""}
+          onChange={(e) => setSelectedEnvironmentId(e.target.value ? Number(e.target.value) : null)}
+          className="rounded-lg border border-[#2B2B31] bg-[#202024] px-3 py-2 text-sm outline-none"
+        >
+          <option value="">No Environment</option>
+          {environments.map((env) => (
+            <option key={env.id} value={env.id}>
+              {env.name}
+            </option>
+          ))}
+        </select>
+
         <SendButton onClick={handleSend} sending={sending} />
       </div>
 
