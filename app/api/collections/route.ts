@@ -121,10 +121,20 @@ export async function GET(request: Request) {
 
     const { userId } = payload as { userId: number };
 
+    const { searchParams } = new URL(request.url);
+    const workspaceId = Number(searchParams.get("workspaceId"));
+
+    if (!workspaceId) {
+      return NextResponse.json(
+        { message: "workspaceId query param is required" },
+        { status: 400 }
+      );
+    }
     const collections = await prisma.collection.findMany({
       where: {
         workspace: {
           userId,
+          id: workspaceId,
         },
       },
       orderBy: {

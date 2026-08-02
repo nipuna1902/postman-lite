@@ -54,3 +54,5 @@
 
 - Deleting a collection built
 - Few UI changes
+- Making workspace switchable
+- Adding params

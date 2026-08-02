@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, Check } from "lucide-react";
 import CreateCollectionModal from "./CreateCollectionModal";
 import { useDashboard } from "./DashboardContext";
 
 export default function Sidebar() {
   const {
+    workspaces,
+    workspaceId,
+    setWorkspaceId,
+    refetchWorkspaces,
     collections,
     selectedCollectionId,
     setSelectedCollectionId,
@@ -18,7 +22,33 @@ export default function Sidebar() {
     clearCollectionSelection,
     setResponse,
   } = useDashboard();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+
+  const currentWorkspace = workspaces.find((w) => w.id === workspaceId);
+
+  const handleCreateWorkspace = async () => {
+    const name = window.prompt("Name your new workspace:");
+    if (!name?.trim()) return;
+
+    const token = localStorage.getItem("token");
+    const res = await fetch("/api/workspaces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message || "Failed to create workspace");
+      return;
+    }
+
+    await refetchWorkspaces();
+    setIsWorkspaceMenuOpen(false);
+  };
 
   const handleDeleteRequest = async (e: React.MouseEvent, requestId: number) => {
     e.stopPropagation();
@@ -74,11 +104,49 @@ export default function Sidebar() {
   return (
     <>
       <aside className="flex w-72 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
-        <div className="border-b border-border p-6">
-          <h1 className="text-2xl font-semibold tracking-[-0.03em]">
+        <div className="relative border-b border-border p-6">
+          <button
+            onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
+            className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-left transition hover:bg-surface"
+          >
+            <span className="truncate text-sm font-medium text-muted">
+              {currentWorkspace?.name ?? "Select workspace"}
+            </span>
+            <ChevronDown size={16} className="shrink-0 text-muted" />
+          </button>
+
+          <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">
             <span>postman-</span>
             <span className="text-accent">lite</span>
           </h1>
+
+          {isWorkspaceMenuOpen && (
+            <div className="absolute left-6 right-6 top-16 z-10 rounded-lg border border-border bg-surface py-1 shadow-lg">
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  onClick={() => {
+                    setWorkspaceId(ws.id);
+                    setIsWorkspaceMenuOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-background"
+                >
+                  <span className="truncate">{ws.name}</span>
+                  {ws.id === workspaceId && <Check size={14} className="text-accent" />}
+                </button>
+              ))}
+
+              <div className="my-1 border-t border-border" />
+
+              <button
+                onClick={handleCreateWorkspace}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-accent hover:bg-background"
+              >
+                <Plus size={14} />
+                New workspace
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between px-6 pt-6">

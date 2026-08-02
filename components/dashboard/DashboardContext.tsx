@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
+type Workspace = { id: number; name: string };
 type Collection = { id: number; name: string };
 
 export type SavedRequest = {
@@ -20,7 +21,11 @@ export type ApiResponse = {
 };
 
 type DashboardContextType = {
+  workspaces: Workspace[];
   workspaceId: number | null;
+  setWorkspaceId: (id: number) => void;
+  refetchWorkspaces: () => Promise<void>;
+
   collections: Collection[];
   selectedCollectionId: number | null;
   setSelectedCollectionId: (id: number) => void;
@@ -39,26 +44,31 @@ type DashboardContextType = {
 const DashboardContext = createContext<DashboardContextType | null>(null);
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const [workspaceId, setWorkspaceId] = useState<number | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceId, setWorkspaceIdState] = useState<number | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollectionId, setSelectedCollectionIdState] = useState<number | null>(null);
   const [requests, setRequests] = useState<SavedRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [response, setResponse] = useState<ApiResponse | null>(null);
 
-  const fetchWorkspace = async () => {
+  const fetchWorkspaces = async () => {
     const token = localStorage.getItem("token");
     const res = await fetch("/api/workspaces", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
     const data = await res.json();
-    if (data.workspaces?.length) setWorkspaceId(data.workspaces[0].id);
+    setWorkspaces(data.workspaces);
+    // Default to the first workspace only if nothing is selected yet.
+    if (data.workspaces?.length && workspaceId == null) {
+      setWorkspaceIdState(data.workspaces[0].id);
+    }
   };
 
-  const fetchCollections = async () => {
+  const fetchCollections = async (wsId: number) => {
     const token = localStorage.getItem("token");
-    const res = await fetch("/api/collections", {
+    const res = await fetch(`/api/collections?workspaceId=${wsId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
@@ -76,7 +86,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setRequests(data.requests);
   };
 
-  // Selecting a collection also loads its requests and clears any stale response.
+  // Switching workspaces resets everything downstream of it —
+  // its collections, whatever collection/request was selected, and any response on screen.
+  const setWorkspaceId = (id: number) => {
+    setWorkspaceIdState(id);
+    setSelectedCollectionIdState(null);
+    setRequests([]);
+    setSelectedRequestId(null);
+    setResponse(null);
+    fetchCollections(id);
+  };
+
   const setSelectedCollectionId = (id: number) => {
     setSelectedCollectionIdState(id);
     setSelectedRequestId(null);
@@ -84,12 +104,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     fetchRequests(id);
   };
 
+  const refetchCollections = async () => {
+    if (workspaceId) await fetchCollections(workspaceId);
+  };
+
   const refetchRequests = async () => {
     if (selectedCollectionId) await fetchRequests(selectedCollectionId);
   };
 
-  // Used when the currently-selected collection itself gets deleted —
-  // wipes every piece of state that depended on it.
   const clearCollectionSelection = () => {
     setSelectedCollectionIdState(null);
     setRequests([]);
@@ -98,18 +120,25 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchWorkspace();
-    fetchCollections();
+    fetchWorkspaces();
   }, []);
+
+  // Once a workspace becomes selected, load its collections.
+  useEffect(() => {
+    if (workspaceId != null) fetchCollections(workspaceId);
+  }, [workspaceId]);
 
   return (
     <DashboardContext.Provider
       value={{
+        workspaces,
         workspaceId,
+        setWorkspaceId,
+        refetchWorkspaces: fetchWorkspaces,
         collections,
         selectedCollectionId,
         setSelectedCollectionId,
-        refetchCollections: fetchCollections,
+        refetchCollections,
         requests,
         selectedRequestId,
         setSelectedRequestId,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import MethodSelect from "./MethodSelect";
 import UrlInput from "./UrlInput";
 import SendButton from "./SendButton";
@@ -14,6 +15,26 @@ type HistoryEntry = {
   response: unknown;
 };
 
+type ParamRow = { key: string; value: string };
+
+// Pure helpers: no state, just string-in/string-out. Reused by both directions of sync.
+function parseParamsFromUrl(url: string): ParamRow[] {
+  const [, query] = url.split("?");
+  if (!query) return [];
+  const params = new URLSearchParams(query);
+  return Array.from(params.entries()).map(([key, value]) => ({ key, value }));
+}
+
+function buildUrlWithParams(url: string, rows: ParamRow[]): string {
+  const base = url.split("?")[0];
+  const validRows = rows.filter((r) => r.key.trim() !== "");
+  if (validRows.length === 0) return base;
+
+  const params = new URLSearchParams();
+  validRows.forEach((r) => params.append(r.key, r.value));
+  return `${base}?${params.toString()}`;
+}
+
 export default function RequestEditor() {
   const {
     selectedCollectionId,
@@ -26,11 +47,12 @@ export default function RequestEditor() {
 
   const [method, setMethod] = useState("GET");
   const [url, setUrl] = useState("");
+  const [paramRows, setParamRows] = useState<ParamRow[]>([]);
   const [headersText, setHeadersText] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [authType, setAuthType] = useState<"none" | "bearer">("none");
   const [authToken, setAuthToken] = useState("");
-  const [activeTab, setActiveTab] = useState<"auth" | "headers" | "body" | "history">("headers");
+  const [activeTab, setActiveTab] = useState<"auth" | "params" | "headers" | "body" | "history">("headers");
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -51,8 +73,6 @@ export default function RequestEditor() {
     setUrl(req.url);
     setBodyText(req.body ? JSON.stringify(req.body, null, 2) : "");
 
-    // Split a saved Authorization: Bearer <token> header back out into the
-    // Auth tab, so it doesn't just show up as raw JSON under Headers.
     const savedHeaders = { ...(req.headers ?? {}) } as Record<string, string>;
     const authHeader = savedHeaders["Authorization"];
 
@@ -67,6 +87,12 @@ export default function RequestEditor() {
 
     setHeadersText(Object.keys(savedHeaders).length ? JSON.stringify(savedHeaders, null, 2) : "");
   }, [selectedRequestId, requests]);
+
+  // Whenever the URL changes — typed directly, loaded from a saved request,
+  // or rebuilt after editing a param row — keep the Params table in sync with it.
+  useEffect(() => {
+    setParamRows(parseParamsFromUrl(url));
+  }, [url]);
 
   useEffect(() => {
     if (activeTab !== "history" || selectedRequestId == null) return;
@@ -83,6 +109,22 @@ export default function RequestEditor() {
 
     fetchHistory();
   }, [activeTab, selectedRequestId]);
+
+  const updateParamRow = (index: number, field: "key" | "value", newValue: string) => {
+    const newRows = paramRows.map((row, i) => (i === index ? { ...row, [field]: newValue } : row));
+    setParamRows(newRows);
+    setUrl(buildUrlWithParams(url, newRows));
+  };
+
+  const addParamRow = () => {
+    setParamRows([...paramRows, { key: "", value: "" }]);
+  };
+
+  const removeParamRow = (index: number) => {
+    const newRows = paramRows.filter((_, i) => i !== index);
+    setParamRows(newRows);
+    setUrl(buildUrlWithParams(url, newRows));
+  };
 
   const handleSend = async () => {
     if (!selectedCollectionId) {
@@ -111,8 +153,6 @@ export default function RequestEditor() {
       return;
     }
 
-    // Fold the Auth tab into the same headers object before saving/sending —
-    // execute doesn't need to know "auth" exists as its own concept.
     if (authType === "bearer" && authToken.trim()) {
       parsedHeaders["Authorization"] = `Bearer ${authToken.trim()}`;
     }
@@ -200,6 +240,9 @@ export default function RequestEditor() {
         <button onClick={() => setActiveTab("auth")} className={activeTab === "auth" ? "text-foreground" : ""}>
           Auth
         </button>
+        <button onClick={() => setActiveTab("params")} className={activeTab === "params" ? "text-foreground" : ""}>
+          Params
+        </button>
         <button onClick={() => setActiveTab("headers")} className={activeTab === "headers" ? "text-foreground" : ""}>
           Headers
         </button>
@@ -211,7 +254,7 @@ export default function RequestEditor() {
         </button>
       </div>
 
-      <div className="mt-4 h-56 overflow-y-auto rounded-xl bg-surface p-4">
+      <div className="mt-4 h-56 overflow-y-auto no-scrollbar rounded-xl bg-surface p-4">
         {activeTab === "auth" ? (
           <div className="space-y-3">
             <select
@@ -232,6 +275,37 @@ export default function RequestEditor() {
                 className="w-full rounded-lg border border-[#2B2B31] bg-[#202024] px-4 py-2 text-sm font-mono outline-none"
               />
             )}
+          </div>
+        ) : activeTab === "params" ? (
+          <div className="space-y-2">
+            {paramRows.length === 0 ? (
+              <p className="text-sm text-muted">No query params yet</p>
+            ) : (
+              paramRows.map((row, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={row.key}
+                    onChange={(e) => updateParamRow(index, "key", e.target.value)}
+                    placeholder="key"
+                    className="w-1/3 rounded-md border border-[#2B2B31] bg-[#202024] px-3 py-1.5 text-sm outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={row.value}
+                    onChange={(e) => updateParamRow(index, "value", e.target.value)}
+                    placeholder="value"
+                    className="flex-1 rounded-md border border-[#2B2B31] bg-[#202024] px-3 py-1.5 text-sm outline-none"
+                  />
+                  <button onClick={() => removeParamRow(index)} className="text-muted hover:text-red-400">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+            <button onClick={addParamRow} className="text-sm text-accent hover:underline">
+              + Add param
+            </button>
           </div>
         ) : activeTab === "headers" ? (
           <textarea
