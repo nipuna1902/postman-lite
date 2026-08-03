@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { METHODS_WITH_BODY } from "@/lib/constants";
 import { substitute, deepSubstitute } from "@/lib/substituteVariables";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(
   request: Request,
@@ -21,6 +22,14 @@ export async function POST(
     }
 
     const { userId } = payload as { userId: number };
+
+    const allowed = await checkRateLimit(userId);
+    if (!allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please slow down." },
+        { status: 429 }
+      );
+    }
     const { id } = await params;
     const requestId = Number(id);
 

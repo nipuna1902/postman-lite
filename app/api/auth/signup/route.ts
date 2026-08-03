@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       message: "Validation successful",
     });
   } catch (error) {
+    console.error("Signup error:", error);
     return NextResponse.json(
       {
         message: "Invalid request",

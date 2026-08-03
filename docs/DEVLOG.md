@@ -58,3 +58,9 @@
 - Adding params
 - Building feature to add environment variables
 - UI for env variable setup
+
+# Day 9
+
+- Let's dockerrr
+- Wrote Dockerfile, docker-compose.yml
+- Setting up redis container
