@@ -64,3 +64,7 @@
 - Let's dockerrr
 - Wrote Dockerfile, docker-compose.yml
 - Setting up redis container
+
+# Day 10
+
+- Fixing errors with database(my postgres is not getting connected)

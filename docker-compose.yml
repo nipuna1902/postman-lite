@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postman123
       POSTGRES_DB: postman_lite
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -24,7 +24,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postman:postman123@postgres:5432/postman_lite
-      JWT_SECRET: your_jwt_secret_here
+      JWT_SECRET: MY_SECRET_KEY_CHOCOLATE
       REDIS_URL: redis://redis:6379
     depends_on:
       - postgres
