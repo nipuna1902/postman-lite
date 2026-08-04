@@ -134,7 +134,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="flex w-58 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
+      <aside className="flex w-62 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
         <div className="relative border-b border-border p-6">
           <button
             onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
