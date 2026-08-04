@@ -64,7 +64,20 @@
 - Let's dockerrr
 - Wrote Dockerfile, docker-compose.yml
 - Setting up redis container
+- Rate limiting
 
 # Day 10
 
 - Fixing errors with database(my postgres is not getting connected)
+- Tested rate limiting
+- const token = localStorage.getItem("token");
+  const requestId = 1;
+  for (let i = 0; i < 25; i++) {
+  fetch(`/api/requests/${requestId}/execute`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  body: JSON.stringify({}),
+  }).then((r) => console.log(i, r.status));
+  }
+- Built search feature for requests
+- Implementing monaco-editor instead of flat text

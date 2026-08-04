@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, ChevronDown, Check } from "lucide-react";
 import CreateCollectionModal from "./CreateCollectionModal";
 import { useDashboard } from "./DashboardContext";
+
+type SearchResult = { id: number; name: string; method: string; collectionId: number };
 
 export default function Sidebar() {
   const {
@@ -25,6 +27,8 @@ export default function Sidebar() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
   const currentWorkspace = workspaces.find((w) => w.id === workspaceId);
 
@@ -101,9 +105,36 @@ export default function Sidebar() {
     await refetchCollections();
   };
 
+  useEffect(() => {
+    if (!searchQuery.trim() || workspaceId == null) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `/api/search?workspaceId=${workspaceId}&q=${encodeURIComponent(searchQuery)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setSearchResults(data.requests);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery, workspaceId]);
+
+  const handleSelectSearchResult = (result: SearchResult) => {
+    setSelectedCollectionId(result.collectionId);
+    setSelectedRequestId(result.id);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
   return (
     <>
-      <aside className="flex w-60 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
+      <aside className="flex w-58 flex-shrink-0 flex-col overflow-y-auto no-scrollbar border-r border-border bg-sidebar">
         <div className="relative border-b border-border p-6">
           <button
             onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
@@ -145,6 +176,31 @@ export default function Sidebar() {
                 <Plus size={14} />
                 New workspace
               </button>
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 pt-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search requests..."
+            className="w-full rounded-lg border border-[#2B2B31] bg-[#202024] px-3 py-1.5 text-sm outline-none"
+          />
+
+          {searchResults.length > 0 && (
+            <div className="mt-2 space-y-1 rounded-lg border border-border bg-surface p-1">
+              {searchResults.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => handleSelectSearchResult(r)}
+                  className="block w-full truncate rounded-md px-2 py-1.5 text-left text-xs hover:bg-background"
+                >
+                  <span className="mr-1 font-mono text-accent">{r.method}</span>
+                  {r.name}
+                </button>
+              ))}
             </div>
           )}
         </div>

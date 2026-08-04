@@ -6,6 +6,7 @@ import MethodSelect from "./MethodSelect";
 import UrlInput from "./UrlInput";
 import SendButton from "./SendButton";
 import { useDashboard } from "./DashboardContext";
+import Editor from "@monaco-editor/react";
 
 type HistoryEntry = {
   id: number;
@@ -323,20 +324,24 @@ export default function RequestEditor() {
             </button>
           </div>
         ) : activeTab === "headers" ? (
-          <textarea
-            value={headersText}
-            onChange={(e) => setHeadersText(e.target.value)}
-            placeholder='{ "Content-Type": "application/json" }'
-            className="h-full w-full resize-none bg-transparent font-mono text-sm outline-none placeholder:text-muted"
-          />
-        ) : activeTab === "body" ? (
-          <textarea
-            value={bodyText}
-            onChange={(e) => setBodyText(e.target.value)}
-            placeholder='{ "key": "value" }'
-            className="h-full w-full resize-none bg-transparent font-mono text-sm outline-none placeholder:text-muted"
-          />
-        ) : selectedRequestId == null ? (
+  <Editor
+      height="100%"
+      language="json"
+      theme="vs-dark"
+      value={headersText}
+      onChange={(value) => setHeadersText(value ?? "")}
+      options={{ minimap: { enabled: false }, fontSize: 13 }}
+    />
+  ) : activeTab === "body" ? (
+    <Editor
+      height="100%"
+      language="json"
+      theme="vs-dark"
+      value={bodyText}
+      onChange={(value) => setBodyText(value ?? "")}
+      options={{ minimap: { enabled: false }, fontSize: 13 }}
+    />
+) : selectedRequestId == null ? (
           <p className="text-sm text-muted">Save this request to see its run history.</p>
         ) : history.length === 0 ? (
           <p className="text-sm text-muted">No runs yet.</p>
