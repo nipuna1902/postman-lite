@@ -120,7 +120,8 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch {
-    return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
-  }
+  } catch (error) {
+  console.error("Execute error:", error);
+  return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
+}
 }

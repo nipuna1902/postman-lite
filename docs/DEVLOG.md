@@ -81,3 +81,8 @@
   }
 - Built search feature for requests
 - Implementing monaco-editor instead of flat text
+
+# Day 11
+
+- Trying to test this projects api endpoints
+- tried hitting Docly's backend through postman-lite using its Railway public URL (docly-production-6e0e.up.railway.app), expecting the /api/auth/signup and /api/auth/login routes from your auth.ts file to respond. Instead, got a 404 Application not found — Railway's own error, not Express app's. Checking the Railway dashboard confirmed why: the Docly service shows "Service is offline", caused by an expired trial period, meaning the backend isn't actually running right now. So the failure was entirely on Docly/Railway's hosting side, not a bug in postman-lite — the tool correctly reported that no real server was reachable at that address.
